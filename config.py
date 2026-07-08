@@ -12,7 +12,7 @@ class Config:
     
     # OpenWeather API Configuration
     OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '') # Empty string enables Simulator fallback
-    DEFAULT_CITY = "Delhi"
+    DEFAULT_CITY = "Vadodara"
     
     # Machine Learning Configuration
     ML_MODEL_PATH = os.path.join(BASE_DIR, 'model', 'model.pkl')
