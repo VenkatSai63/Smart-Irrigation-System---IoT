@@ -1,0 +1,237 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card glass-card border-0 shadow-sm">
+            <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                    <h3 class="font-weight-bold mb-1 text-success">Control Center (Admin)</h3>
+                    <p class="text-muted mb-0">System configuration, users management, and exports data portal.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ url_for('main.admin_export_pdf') }}" class="btn btn-danger py-2 px-3 font-weight-semibold">
+                        <i class="fa-solid fa-file-pdf me-1"></i> Export PDF Report
+                    </a>
+                    <div class="dropdown">
+                        <button class="btn btn-success py-2 px-3 dropdown-toggle font-weight-semibold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-file-excel me-1"></i> Export Excel (.xlsx)
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg glass-card">
+                            <li><a class="dropdown-item" href="{{ url_for('main.admin_export_excel', table_name='sensor_data') }}">Sensor Logs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('main.admin_export_excel', table_name='pump_logs') }}">Pump Logs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('main.admin_export_excel', table_name='predictions') }}">ML Predictions</a></li>
+                        </ul>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-secondary py-2 px-3 dropdown-toggle font-weight-semibold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-file-csv me-1"></i> Export CSV (.csv)
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg glass-card">
+                            <li><a class="dropdown-item" href="{{ url_for('main.admin_export_csv', table_name='sensor_data') }}">Sensor Logs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('main.admin_export_csv', table_name='pump_logs') }}">Pump Logs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('main.admin_export_csv', table_name='predictions') }}">ML Predictions</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- User Management Table -->
+    <div class="col-xl-6">
+        <div class="card glass-card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h5 class="card-title mb-0 font-weight-bold"><i class="fa-solid fa-users text-success me-2"></i>Registered Users</h5>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive" style="max-height: 380px;">
+                    <table class="table table-hover align-middle custom-table">
+                        <thead class="bg-light-custom text-muted small uppercase">
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr id="userRow-{{ u.id }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle-sm me-2 text-white bg-success-subtle text-success">
+                                            <i class="fa-solid fa-user"></i>
+                                        </div>
+                                        <strong>{{ u.username }}</strong>
+                                    </div>
+                                </td>
+                                <td>{{ u.email }}</td>
+                                <td>
+                                    {% if u.is_admin %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Admin</span>
+                                    {% else %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Farmer</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if u.username != 'admin' and u.id != current_user.id %}
+                                    <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" onclick="deleteUser({{ u.id }}, '{{ u.username }}')" title="Delete User">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted small">Locked</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pump History Logs -->
+    <div class="col-xl-6">
+        <div class="card glass-card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h5 class="card-title mb-0 font-weight-bold"><i class="fa-solid fa-clock-rotate-left text-success me-2"></i>Pump Operation Logs</h5>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive" style="max-height: 380px;">
+                    <table class="table table-hover align-middle custom-table">
+                        <thead class="bg-light-custom text-muted small uppercase">
+                            <tr>
+                                <th>Action</th>
+                                <th>Trigger Source</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pump_logs %}
+                            <tr>
+                                <td>
+                                    {% if p.action == 'Pump ON' %}
+                                    <span class="badge bg-success text-white border border-success animate-pulse">Pump ON</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary text-white border border-secondary">Pump OFF</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if p.source == 'AUTO' %}
+                                    <strong class="text-success"><i class="fa-solid fa-robot"></i> AI Auto</strong>
+                                    {% else %}
+                                    <strong class="text-primary"><i class="fa-solid fa-user"></i> {{ p.source }}</strong>
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted small">{{ p.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">No pump operations logged.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Machine Learning Predictions History -->
+    <div class="col-12">
+        <div class="card glass-card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h5 class="card-title mb-0 font-weight-bold"><i class="fa-solid fa-brain text-success me-2"></i>Machine Learning Inference Engine Logs</h5>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle custom-table">
+                        <thead class="sticky-top bg-light-custom text-muted small uppercase">
+                            <tr>
+                                <th>Crop Type</th>
+                                <th>Soil Moisture</th>
+                                <th>Ambient climate</th>
+                                <th>Rain State</th>
+                                <th>ML Prediction</th>
+                                <th>Confidence</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pr in predictions %}
+                            <tr>
+                                <td><strong>{{ pr.crop_type }}</strong></td>
+                                <td><span class="text-info font-weight-bold">{{ pr.moisture }}%</span></td>
+                                <td>Temp: {{ pr.temperature }}°C | Hum: {{ pr.humidity }}%</td>
+                                <td>
+                                    {% if pr.rain %}
+                                    <span class="badge bg-danger-subtle text-danger">Wet</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-muted">Dry</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pr.prediction == 'Pump ON' %}
+                                    <span class="badge bg-success"><i class="fa-solid fa-power-off"></i> Pump ON</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary"><i class="fa-solid fa-circle-stop"></i> Pump OFF</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 10px; width: 80px;" title="{{ pr.confidence }}%">
+                                        <div class="progress-bar {% if pr.prediction == 'Pump ON' %}bg-success{% else %}bg-secondary{% endif %}" role="progressbar" style="width: {{ pr.confidence }}%" aria-valuenow="{{ pr.confidence }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="small font-weight-semibold text-muted">{{ pr.confidence | round(1) }}%</span>
+                                </td>
+                                <td class="text-muted small">{{ pr.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No prediction logs available. Make sure the simulation is running or sensors are sending data.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function deleteUser(userId, username) {
+        if (confirm("Are you sure you want to delete user: " + username + "?")) {
+            fetch("/admin/delete-user/" + userId, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    var row = document.getElementById("userRow-" + userId);
+                    if (row) {
+                        row.remove();
+                    }
+                    alert(data.message);
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Delete user error:", error);
+                alert("Error deleting user.");
+            });
+        }
+    }
+</script>
+{% endblock %}
