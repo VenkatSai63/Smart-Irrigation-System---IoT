@@ -101,7 +101,7 @@ def process_new_sensor_reading(data, system_state):
     
     # 2. Query/Update weather cache (every 30 mins or if city changed)
     last_weather = Weather.query.order_by(Weather.timestamp.desc()).first()
-    city = system_state.get('weather_city', 'Delhi')
+    city = system_state.get('weather_city') or 'Delhi'
     if not last_weather or last_weather.city.lower() != city.lower() or (datetime.utcnow() - last_weather.timestamp) > timedelta(minutes=30):
         w_data = get_weather_data(city)
         weather_log = Weather(

@@ -120,3 +120,20 @@ def get_simulated_weather(city):
         'is_rainy': is_rainy,
         'forecast': forecast
     }
+
+def detect_local_city():
+    """
+    Detects the user's local city using their public IP address.
+    Falls back to Config.DEFAULT_CITY if detection fails.
+    """
+    try:
+        response = requests.get("http://ip-api.com/json/", timeout=4)
+        if response.status_code == 200:
+            data = response.json()
+            city = data.get('city')
+            if city:
+                print(f"[GEO-IP] Detected local city: {city}")
+                return city
+    except Exception as e:
+        print(f"[GEO-IP] Failed to auto-detect local city: {e}")
+    return Config.DEFAULT_CITY

@@ -15,7 +15,7 @@ system_state = {
     'pump_status': 'OFF',  # 'ON' or 'OFF'
     'mode': 'AUTO',        # 'AUTO' or 'MANUAL'
     'crop': 'Wheat',       # Active crop
-    'weather_city': Config.DEFAULT_CITY, # Active weather location
+    'weather_city': None,  # Lazy initialized via detect_local_city() on load
     'last_active_time': datetime.utcnow()
 }
 
@@ -130,10 +130,15 @@ def logout():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
+    # Detect local city if not set
+    if not system_state.get('weather_city'):
+        from weather import detect_local_city
+        system_state['weather_city'] = detect_local_city()
+        
     # Fetch recent sensor logs
     recent_logs = SensorData.query.order_by(SensorData.timestamp.desc()).limit(10).all()
     # Fetch current weather cache
-    weather = Weather.query.order_by(Weather.timestamp.desc()).first()
+    weather = Weather.query.filter(Weather.city.ilike(system_state['weather_city'])).order_by(Weather.timestamp.desc()).first()
     
     # Calculate water usage mock stats
     # (Pump ON duration * mock flow rate of 12 Liters/Min)
@@ -293,7 +298,11 @@ def change_crop():
 @main_bp.route('/weather', methods=['GET'])
 @login_required
 def get_weather():
-    city = system_state.get('weather_city', Config.DEFAULT_CITY)
+    if not system_state.get('weather_city'):
+        from weather import detect_local_city
+        system_state['weather_city'] = detect_local_city()
+        
+    city = system_state['weather_city']
     w = Weather.query.filter(Weather.city.ilike(city)).order_by(Weather.timestamp.desc()).first()
     if not w:
         from weather import get_weather_data
