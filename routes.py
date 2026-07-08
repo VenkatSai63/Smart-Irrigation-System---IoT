@@ -15,6 +15,7 @@ system_state = {
     'pump_status': 'OFF',  # 'ON' or 'OFF'
     'mode': 'AUTO',        # 'AUTO' or 'MANUAL'
     'crop': 'Wheat',       # Active crop
+    'weather_city': Config.DEFAULT_CITY, # Active weather location
     'last_active_time': datetime.utcnow()
 }
 
@@ -292,10 +293,56 @@ def change_crop():
 @main_bp.route('/weather', methods=['GET'])
 @login_required
 def get_weather():
-    w = Weather.query.order_by(Weather.timestamp.desc()).first()
-    if w:
-        return jsonify(w.to_dict())
-    return jsonify({'error': 'No weather cache available'})
+    city = system_state.get('weather_city', Config.DEFAULT_CITY)
+    w = Weather.query.filter(Weather.city.ilike(city)).order_by(Weather.timestamp.desc()).first()
+    if not w:
+        from weather import get_weather_data
+        w_data = get_weather_data(city)
+        w = Weather(
+            city=w_data['city'],
+            temperature=w_data['temperature'],
+            humidity=w_data['humidity'],
+            wind_speed=w_data['wind_speed'],
+            rain_prob=w_data['rain_prob'],
+            condition=w_data['condition']
+        )
+        db.session.add(w)
+        db.session.commit()
+    return jsonify(w.to_dict())
+
+# POST /weather/change-city -> Change active weather location
+@main_bp.route('/weather/change-city', methods=['POST'])
+@login_required
+def change_city():
+    data = request.get_json() or {}
+    new_city = data.get('city', '').strip()
+    if new_city:
+        system_state['weather_city'] = new_city
+        
+        # Trigger immediate weather fetch
+        from weather import get_weather_data
+        w_data = get_weather_data(new_city)
+        
+        weather_log = Weather(
+            city=w_data['city'],
+            temperature=w_data['temperature'],
+            humidity=w_data['humidity'],
+            wind_speed=w_data['wind_speed'],
+            rain_prob=w_data['rain_prob'],
+            condition=w_data['condition']
+        )
+        db.session.add(weather_log)
+        
+        # Re-run prediction if AUTO mode
+        if system_state['mode'] == 'AUTO':
+            last_sensor = SensorData.query.order_by(SensorData.timestamp.desc()).first()
+            if last_sensor:
+                process_new_sensor_reading(last_sensor.to_dict(), system_state)
+                
+        db.session.commit()
+        return jsonify({'success': True, 'city': system_state['weather_city'], 'weather': w_data})
+        
+    return jsonify({'success': False, 'message': 'Invalid city name'})
 
 # GET /logs -> Returns sensor data, pump history, predictions
 @main_bp.route('/logs', methods=['GET'])

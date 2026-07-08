@@ -143,8 +143,17 @@
     <!-- Weather & Local Forecast Card -->
     <div class="col-lg-7">
         <div class="card glass-card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0 pt-4 px-4">
+            <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between pt-4 px-4 flex-wrap gap-2">
                 <h5 class="card-title mb-0 font-weight-bold"><i class="fa-solid fa-cloud-sun-rain text-success me-2"></i>Weather Outlook</h5>
+                <!-- Dynamic City Input Selector -->
+                <div class="d-flex align-items-center gap-1" style="max-width: 250px;">
+                    <div class="input-group input-group-sm">
+                        <input type="text" id="weatherCityInput" class="form-control" placeholder="Change location..." value="{{ system_state.weather_city }}">
+                        <button class="btn btn-success" type="button" id="btnUpdateCity" title="Update Location">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="card-body px-4 pb-4">
                 <div class="row align-items-center mb-4">
@@ -642,6 +651,41 @@
 
     // Refresh every 5 seconds
     setInterval(updateDashboard, 5000);
+
+    // Update Weather City Selection
+    function updateWeatherCity() {
+        var city = document.getElementById('weatherCityInput').value.trim();
+        if (!city) {
+            alert("Please enter a valid city name");
+            return;
+        }
+        fetch("/weather/change-city", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ city: city })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Instantly refresh dashboard
+                updateDashboard();
+                setTimeout(populateMockForecast, 500);
+            } else {
+                alert(data.message || "Failed to update location");
+            }
+        })
+        .catch(err => {
+            console.error("City update error:", err);
+            alert("Error updating location.");
+        });
+    }
+
+    document.getElementById('btnUpdateCity').addEventListener('click', updateWeatherCity);
+    document.getElementById('weatherCityInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            updateWeatherCity();
+        }
+    });
 
     // Initial triggers
     window.addEventListener('DOMContentLoaded', function() {

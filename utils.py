@@ -99,10 +99,11 @@ def process_new_sensor_reading(data, system_state):
     # Is it raining? (Let's define analog rain sensor < 50.0 as rain detected)
     is_raining = data['rain_value'] < 50.0
     
-    # 2. Query/Update weather cache (every 30 mins)
+    # 2. Query/Update weather cache (every 30 mins or if city changed)
     last_weather = Weather.query.order_by(Weather.timestamp.desc()).first()
-    if not last_weather or (datetime.utcnow() - last_weather.timestamp) > timedelta(minutes=30):
-        w_data = get_weather_data()
+    city = system_state.get('weather_city', 'Delhi')
+    if not last_weather or last_weather.city.lower() != city.lower() or (datetime.utcnow() - last_weather.timestamp) > timedelta(minutes=30):
+        w_data = get_weather_data(city)
         weather_log = Weather(
             city=w_data['city'],
             temperature=w_data['temperature'],
